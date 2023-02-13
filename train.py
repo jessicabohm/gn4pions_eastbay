@@ -24,6 +24,7 @@ from gn4pions.modules.data import GraphDataGenerator
 from gn4pions.modules.models import MultiOutWeightedRegressModel
 from gn4pions.modules.utils import convert_to_tuple
 
+
 sns.set_context('poster')
 
 def get_args():
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     learning_rate = train_config['learning_rate']
     alpha = train_config['alpha']
     os.environ['CUDA_VISIBLE_DEVICES'] = str(train_config['gpu'])
-    physical_devices = tf.config.list_physical_devices('GPU') 
+    physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     log_freq = train_config['log_freq']
@@ -105,6 +106,7 @@ if __name__ == "__main__":
 
     # Training Data Generator
     # Will preprocess data if it doesnt find pickled files
+    print("pion train:", pion_train_files)
     data_gen_train = GraphDataGenerator(pi0_file_list=pi0_train_files,
                                         pion_file_list=pion_train_files,
                                         cellGeo_file=cell_geo_file,
@@ -129,8 +131,8 @@ if __name__ == "__main__":
     def get_batch(data_iter):
         for graphs, targets in data_iter:
             targets = tf.convert_to_tensor(targets)
-            graphs, energies, etas, em_probs, cluster_calib_es, cluster_had_weights, truth_particle_pts, track_pts = convert_to_tuple(graphs)
-            yield graphs, targets, energies, etas, em_probs, cluster_calib_es, cluster_had_weights, truth_particle_pts, track_pts
+            graphs, energies, etas, em_probs, cluster_calib_es, cluster_had_weights, truth_particle_pts = convert_to_tuple(graphs)#, track_pts = convert_to_tuple(graphs)
+            yield graphs, targets, energies, etas, em_probs, cluster_calib_es, cluster_had_weights, truth_particle_pts#, track_pts
 
     # Define loss function        
     mae_loss = tf.keras.losses.MeanAbsoluteError()
@@ -142,7 +144,7 @@ if __name__ == "__main__":
         return regress_loss, class_loss, combined_loss
 
     # Get a sample graph for tf.function decorator
-    samp_graph, samp_target, _, _, _, _, _, _, _ = next(get_batch(data_gen_train.generator()))
+    samp_graph, samp_target, _, _, _, _, _, _ = next(get_batch(data_gen_train.generator()))
     data_gen_train.kill_procs()
     graph_spec = utils_tf.specs_from_graphs_tuple(samp_graph, True, True, True)
 
@@ -183,14 +185,17 @@ if __name__ == "__main__":
     val_loss_class_epoch = []
 
     # Model checkpointing, load latest model if available
+    
     checkpoint = tf.train.Checkpoint(module=model)
     checkpoint_prefix = os.path.join(save_dir, 'latest_model')
     latest = tf.train.latest_checkpoint(save_dir)
+    print("latest", latest)
     if latest is not None:
         checkpoint.restore(latest)
     else:
         checkpoint.save(checkpoint_prefix)
-
+    
+    
     # Run training
     curr_loss = 1e5
 
@@ -210,7 +215,7 @@ if __name__ == "__main__":
         # Train
         print('Training...')
         start = time.time()
-        for i, (graph_data_tr, targets_tr, _, _, _, _, _, _, _) in enumerate(get_batch(data_gen_train.generator())):
+        for i, (graph_data_tr, targets_tr, _, _, _, _, _, _) in enumerate(get_batch(data_gen_train.generator())):
             losses_tr_rg, losses_tr_cl, losses_tr = train_step(graph_data_tr, targets_tr)
 
             training_loss.append(losses_tr.numpy())
@@ -241,12 +246,11 @@ if __name__ == "__main__":
         all_cluster_calib_es = []
         all_cluster_had_weights = []
         all_truth_particle_pts = []
-        all_track_pts = []
+        #all_track_pts = []
         
         start = time.time()
-        for i, (graph_data_val, targets_val, energies_val, etas_val, em_probs_val, cluster_calib_es_val, cluster_had_weights_val, truth_particle_pts_val, track_pts_val) in enumerate(get_batch(data_gen_val.generator())):
+        for i, (graph_data_val, targets_val, energies_val, etas_val, em_probs_val, cluster_calib_es_val, cluster_had_weights_val, truth_particle_pts_val)  in enumerate(get_batch(data_gen_val.generator())):#, track_pts_val)
             losses_val_rg, losses_val_cl, losses_val, regress_vals, class_vals = val_step(graph_data_val, targets_val)
-
             targets_val = targets_val.numpy()
             regress_vals = regress_vals.numpy()
             class_vals = class_vals.numpy()
@@ -271,7 +275,7 @@ if __name__ == "__main__":
             all_cluster_calib_es.append([10**energy for energy in cluster_calib_es_val])
             all_cluster_had_weights.append(cluster_had_weights_val)
             all_truth_particle_pts.append(truth_particle_pts_val)
-            all_track_pts.append(track_pts_val)
+            #all_track_pts.append(track_pts_val)
 
             if not (i-1)%log_freq:
                 end = time.time()
@@ -292,7 +296,7 @@ if __name__ == "__main__":
         all_cluster_calib_es = np.concatenate(all_cluster_calib_es)
         all_cluster_had_weights = np.concatenate(all_cluster_had_weights)
         all_truth_particle_pts = np.concatenate(all_truth_particle_pts) 
-        all_track_pts = np.concatenate(all_track_pts) 
+        #all_track_pts = np.concatenate(all_track_pts) 
         
         val_loss_epoch.append(val_loss)
         val_loss_regress_epoch.append(val_loss_regress)
@@ -329,9 +333,9 @@ if __name__ == "__main__":
                     em_probs=all_em_probs,
                     cluster_calib_es=all_cluster_calib_es,
                     cluster_had_weights=all_cluster_had_weights,
-                    truth_particle_pts=all_truth_particle_pts,
-                    track_pts=all_track_pts)
-            checkpoint.save(checkpoint_prefix)
+                    truth_particle_pts=all_truth_particle_pts)
+                    #track_pts=all_track_pts)
+            checkpoint.save(checkpoint_prefix) # TODO: uncomment
         else: 
             print(f'Loss didnt decrease from {curr_loss:.4f}')
 

@@ -24,11 +24,12 @@ def convert_to_tuple(graphs):
     cluster_had_weights = []
     truth_particle_es = []
     truth_particle_pts = []
-    track_pts = []
-    track_etas = []
+    #track_pts = []
+    #track_etas = []
     sum_cluster_energies = []
     sum_lcw_energies = []
 
+    graph_dicts = []
     for graph in graphs:
         nodes.append(graph['nodes'])
         edges.append(graph['edges'])
@@ -44,12 +45,25 @@ def convert_to_tuple(graphs):
         cluster_had_weights.append(graph['cluster_HAD_WEIGHT'])
         truth_particle_es.append(graph['truthPartE'])
         truth_particle_pts.append(graph['truthPartPt'])
-        track_pts.append(graph['track_pt'])
-        track_etas.append(graph['track_eta'])
+        #track_pts.append(graph['track_pt'])
+        #track_etas.append(graph['track_eta'])
         sum_cluster_energies.append(graph['sum_cluster_E'])
         sum_lcw_energies.append(graph['sum_lcw_E'])
 
         offset += len(graph['nodes'])
+
+        """
+        # format for visualization
+        graph_dicts.append({
+            "globals": graph['globals'],
+            "nodes": graph['nodes'],
+            "edges": graph['edges'],
+            "senders": graph['senders'],
+            "receivers": graph['receivers']
+        })
+
+    return graph_dicts
+    """
 
     nodes = tf.convert_to_tensor(np.concatenate(nodes))
     edges = tf.convert_to_tensor(np.concatenate(edges))
@@ -69,4 +83,5 @@ def convert_to_tuple(graphs):
             n_edge=n_edge
         )
 
-    return graph, cluster_energies, cluster_etas, cluster_EM_probs, cluster_calib_Es, cluster_had_weights, truth_particle_es, truth_particle_pts, track_pts, track_etas, sum_cluster_energies, sum_lcw_energies
+
+    return graph, cluster_energies, cluster_etas, cluster_EM_probs, cluster_calib_Es, cluster_had_weights, truth_particle_pts#, track_pts, track_etas, sum_cluster_energies, sum_lcw_energies

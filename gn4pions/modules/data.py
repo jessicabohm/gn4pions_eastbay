@@ -127,9 +127,12 @@ class GraphDataGenerator:
         self.num_procs = np.min([num_procs, self.num_files])
         self.procs = []
 
+        #self.first_10 = False
+
         if self.preprocess and self.output_dir is not None:
             os.makedirs(self.output_dir, exist_ok=True)
             self.preprocess_data()
+
 
     def get_cluster_calib(self, event_data, event_ind, cluster_ind):
         """ Reading cluster calibration energy """
@@ -227,20 +230,47 @@ class GraphDataGenerator:
         Reading edge features
         Returns senders, receivers, and edges
         """
-
+        
         edge_inds = np.zeros((cluster_num_nodes, self.num_edgeFeatures))
+
+        #if cluster_num_nodes == 5 and self.first_10 == False:
+        #    print("num clus nodes:", cluster_num_nodes)
+        #    print("edge_inds:", edge_inds)
+
+
         for i, f in enumerate(self.edgeFeatureNames):
             edge_inds[:, i] = self.cellGeo_data[f][0][cell_IDmap]
+
+        #if cluster_num_nodes == 5 and self.first_10 == False:
+        #    print("edge_inds:", edge_inds)
+        
         edge_inds[np.logical_not(np.isin(edge_inds, cell_IDmap))] = np.nan
+        #if cluster_num_nodes == 5 and self.first_10 == False:
+        #    print("mask out nodes not in cluster")
+        #    print("edge_inds:", edge_inds)
 
         senders, edge_on_inds = np.isin(edge_inds, cell_IDmap).nonzero()
+
         cluster_num_edges = len(senders)
         edges = np.zeros((cluster_num_edges, self.num_edgeFeatures))
         edges[np.arange(cluster_num_edges), edge_on_inds] = 1
 
+        #if cluster_num_nodes == 5 and self.first_10 == False:
+        #    print("senders:", senders)
+        #    print("edge_on_inds:", edge_on_inds)
+        #    print("num clus edges", cluster_num_edges)
+        #    print("edges:", edges)
+
         cell_IDmap_sorter = np.argsort(cell_IDmap)
         rank = np.searchsorted(cell_IDmap, edge_inds , sorter=cell_IDmap_sorter)
         receivers = cell_IDmap_sorter[rank[rank!=cluster_num_nodes]]
+
+        #if cluster_num_nodes == 5 and self.first_10 == False:
+        #    print("cell_ID map:", cell_IDmap)
+        #    print("cell_IDmap_sorter:", cell_IDmap_sorter)
+        #    print("rank:", rank)
+        #    print("receivers", receivers)
+        #    self.first_10 = True
 
         return senders, receivers, edges
 
@@ -331,6 +361,7 @@ class GraphDataGenerator:
                     senders, receivers, edges = self.get_edges(cluster_num_nodes, cell_IDmap)
 
 #                 # track section ----------------------------------------------------------------
+                    """
 #                     track_nodes = np.empty((0, 11))
                     num_tracks = event_data['nTrack'][event_ind]
                     if num_tracks > 0:
@@ -363,7 +394,7 @@ class GraphDataGenerator:
 #                     receivers = np.append(receivers, track_receivers, axis=0)
 
 #                     # end track section ----------------------------------------------------------------
-
+                    """
                     globals_list = np.array([
                                              cluster_E_0_scaled.astype(np.float32),
                                              cluster_E_1_scaled.astype(np.float32),
@@ -375,10 +406,10 @@ class GraphDataGenerator:
                                              cluster_E_7_scaled.astype(np.float32),
                                              cluster_E_8_scaled.astype(np.float32),
                                              cluster_E_9_scaled.astype(np.float32),
-                                             track_pt_scaled.astype(np.float32),
-                                             track_z0_scaled.astype(np.float32),
-                                             track_eta_scaled.astype(np.float32),
-                                             track_phi_scaled.astype(np.float32),
+                                             #track_pt_scaled.astype(np.float32),
+                                             #track_z0_scaled.astype(np.float32),
+                                             #track_eta_scaled.astype(np.float32),
+                                             #track_phi_scaled.astype(np.float32),
                                              ])
 
                     graph = {'nodes': nodes.astype(np.float32),
@@ -390,9 +421,11 @@ class GraphDataGenerator:
                             'cluster_eta': cluster_eta.astype(np.float32), 'cluster_EM_prob': cluster_EM_prob.astype(np.float32),
                             'cluster_E_0': cluster_E_0.astype(np.float32), 'cluster_HAD_WEIGHT': cluster_HAD_WEIGHT.astype(np.float32),
                             'truthPartPt': truthPartPt.astype(np.float32), 'truthPartE': truth_particle_E.astype(np.float32),
-                             'track_pt': track_pt.astype(np.float32), 'track_eta': track_eta.astype(np.float32),
+                            #'track_pt': track_pt.astype(np.float32), 'track_eta': track_eta.astype(np.float32),
                             'sum_cluster_E': sum_cluster_E.astype(np.float32), 'sum_lcw_E': sum_lcw_E.astype(np.float32)}
-                    target = np.reshape([truth_particle_E_scaled.astype(np.float32), 1], [1,2])
+                    # target particle - 0 for pi0, 1 for pi+/-
+                    target_particle = 0 if event_data["truthPartPdgId"][event_ind][0] == 111 else 1
+                    target = np.reshape([truth_particle_E_scaled.astype(np.float32), target_particle], [1,2])
                     preprocessed_data.append((graph, target))
 
 #             ### Pi0
@@ -517,20 +550,19 @@ class GraphDataGenerator:
         """
         Generator that returns processed batches during training
         """
+
+        print("in generator")
         batch_queue = Queue(2 * self.num_procs)
 
         for i in range(self.num_procs):
             p = Process(target=self.worker, args=(i, batch_queue), daemon=True)
             p.start()
             self.procs.append(p)
-
         while self.check_procs() or not batch_queue.empty():
             try:
                 batch = batch_queue.get(True, 0.0001)
             except:
                 continue
-
             yield batch
-
         for p in self.procs:
             p.join()
