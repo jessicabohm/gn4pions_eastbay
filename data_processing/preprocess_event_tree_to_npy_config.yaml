@@ -1,0 +1,4 @@
+pipm1_files: ["/data/atlas/data/allCellTruthv1/pipm/user.mswiatlo.27153452.OutputStream._000017.root"]
+pipm2_files: ["/data/atlas/data/allCellTruthv1/pipm/user.mswiatlo.27153452.OutputStream._000018.root"]
+pi0_files: ["/data/atlas/data/allCellTruthv1/pi0/user.mswiatlo.27153451.OutputStream._000016.root"]
+save_dir: /fast_scratch_1/jbohm/train_testing_data/pion_files

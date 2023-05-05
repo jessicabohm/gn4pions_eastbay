@@ -106,7 +106,6 @@ if __name__ == "__main__":
 
     # Training Data Generator
     # Will preprocess data if it doesnt find pickled files
-    print("pion train:", pion_train_files)
     data_gen_train = GraphDataGenerator(pi0_file_list=pi0_train_files,
                                         pion_file_list=pion_train_files,
                                         cellGeo_file=cell_geo_file,
@@ -189,7 +188,6 @@ if __name__ == "__main__":
     checkpoint = tf.train.Checkpoint(module=model)
     checkpoint_prefix = os.path.join(save_dir, 'latest_model')
     latest = tf.train.latest_checkpoint(save_dir)
-    print("latest", latest)
     if latest is not None:
         checkpoint.restore(latest)
     else:
@@ -335,7 +333,7 @@ if __name__ == "__main__":
                     cluster_had_weights=all_cluster_had_weights,
                     truth_particle_pts=all_truth_particle_pts)
                     #track_pts=all_track_pts)
-            checkpoint.save(checkpoint_prefix) # TODO: uncomment
+            checkpoint.save(checkpoint_prefix)
         else: 
             print(f'Loss didnt decrease from {curr_loss:.4f}')
 

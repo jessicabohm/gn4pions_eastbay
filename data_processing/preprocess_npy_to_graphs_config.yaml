@@ -1,0 +1,9 @@
+pion_dir: /fast_scratch_1/jbohm/train_testing_data/pion_files
+pipm1_file_nums: [15]
+pipm2_file_nums: [16]
+pi0_file_nums: [15]
+save_dir: /fast_scratch_1/jbohm/train_testing_data/pion_cluster_graphs/
+len_file: 6000
+i_low: 0
+i_high: 64
+num_procs: 32

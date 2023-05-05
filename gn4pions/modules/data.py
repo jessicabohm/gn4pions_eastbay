@@ -93,11 +93,13 @@ class GraphDataGenerator:
                  shuffle: bool = True,
                  num_procs = 32,
                  preprocess = False,
-                 output_dir = None):
+                 output_dir = None,
+                 keep_file_name = False):
         """Initialization"""
 
         self.preprocess = preprocess
         self.output_dir = output_dir
+        self.keep_file_name = keep_file_name
 
         if self.preprocess and self.output_dir is not None:
             self.pi0_file_list = pi0_file_list
@@ -485,7 +487,11 @@ class GraphDataGenerator:
 
             random.shuffle(preprocessed_data)
 
-            pickle.dump(preprocessed_data, open(self.output_dir + f'data_{file_num:03d}.p', 'wb'), compression='gzip')
+            if self.keep_file_name:
+                file_name = file.split('/')[-1][:-3] + 'p'
+            else:
+                file_name = f'data_{file_num:03d}.p'
+            pickle.dump(preprocessed_data, open(self.output_dir + file_name, 'wb'), compression='gzip')
 
             print(f"Finished processing {file_num} files")
             file_num += self.num_procs
@@ -551,7 +557,6 @@ class GraphDataGenerator:
         Generator that returns processed batches during training
         """
 
-        print("in generator")
         batch_queue = Queue(2 * self.num_procs)
 
         for i in range(self.num_procs):
